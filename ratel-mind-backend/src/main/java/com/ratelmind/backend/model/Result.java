@@ -1,11 +1,28 @@
 package com.ratelmind.backend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "results")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Getter
+@Setter
 public class Result {
 
     @Id
@@ -22,54 +39,18 @@ public class Result {
     private String answersJson;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt = Instant.now();
+    @CreationTimestamp
+    private Instant createdAt;
 
-    public Result() {
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Result result = (Result) o;
+        return Objects.equals(id, result.id);
     }
 
-    public Result(int totalScore, String level, String answersJson) {
-        this.totalScore = totalScore;
-        this.level = level;
-        this.answersJson = answersJson;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public int getTotalScore() {
-        return totalScore;
-    }
-
-    public void setTotalScore(int totalScore) {
-        this.totalScore = totalScore;
-    }
-
-    public String getLevel() {
-        return level;
-    }
-
-    public void setLevel(String level) {
-        this.level = level;
-    }
-
-    public String getAnswersJson() {
-        return answersJson;
-    }
-
-    public void setAnswersJson(String answersJson) {
-        this.answersJson = answersJson;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

@@ -1,14 +1,32 @@
 package com.ratelmind.backend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
+@Getter
+@Setter
 @Entity
 @Table(
         name = "event_results",
         uniqueConstraints = @UniqueConstraint(columnNames = {"room_code", "nickname"})
 )
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class EventResult {
 
     @Id
@@ -31,34 +49,18 @@ public class EventResult {
     private String answersJson;
 
     @Column(name="created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 
-    public EventResult() {}
-
-    public EventResult(String roomCode, String nickname, int totalScore, String level, String answersJson) {
-        this.roomCode = roomCode;
-        this.nickname = nickname;
-        this.totalScore = totalScore;
-        this.level = level;
-        this.answersJson = answersJson;
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        EventResult that = (EventResult) o;
+        return Objects.equals(id, that.id);
     }
 
-    public Long getId() { return id; }
-
-    public String getRoomCode() { return roomCode; }
-    public void setRoomCode(String roomCode) { this.roomCode = roomCode; }
-
-    public String getNickname() { return nickname; }
-    public void setNickname(String nickname) { this.nickname = nickname; }
-
-    public int getTotalScore() { return totalScore; }
-    public void setTotalScore(int totalScore) { this.totalScore = totalScore; }
-
-    public String getLevel() { return level; }
-    public void setLevel(String level) { this.level = level; }
-
-    public String getAnswersJson() { return answersJson; }
-    public void setAnswersJson(String answersJson) { this.answersJson = answersJson; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 }
