@@ -17,11 +17,11 @@ export const SCALE = {
 
 // ===== POZIOMY OGÓLNE =====
 export const RATEL_LEVELS = [
-  { min: 48, max: 60, label: "Poziom 1" },
-  { min: 61, max: 120, label: "Poziom 2" },
-  { min: 121, max: 180, label: "Poziom 3" },
-  { min: 181, max: 219, label: "Poziom 4" },
-  { min: 220, max: 240, label: "Poziom 5" },
+  { min: 48, max: 60, label: 1 },
+  { min: 61, max: 120, label: 2 },
+  { min: 121, max: 180, label: 3 },
+  { min: 181, max: 219, label: 4 },
+  { min: 220, max: 240, label: 5 },
 ];
 
 // ===== POZIOMY FILARÓW I UMIEJĘTNOŚCI =====
@@ -162,7 +162,7 @@ export function scoreAnswer(qId, val) {
 }
 
 export function getRatelLevel(score) {
-  return RATEL_LEVELS.find((l) => score >= l.min && score <= l.max)?.label ?? "Nieznany";
+  return RATEL_LEVELS.find((l) => score >= l.min && score <= l.max)?.label ?? 0;
 }
 export function getPillarLevel(score) {
   return PILLAR_LEVELS.find((l) => score >= l.min && score <= l.max)?.label ?? "Nieznany";

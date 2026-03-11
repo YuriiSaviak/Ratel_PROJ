@@ -6,9 +6,9 @@ public record GlobalStatsDto(
         int minScore,
         int maxScore,
         double percentile,
-        int level1Count,
-        int level2Count,
-        int level3Count,
-        int level4Count,
-        int level5Count
+        long level1Count,
+        long level2Count,
+        long level3Count,
+        long level4Count,
+        long level5Count
 ) {}
