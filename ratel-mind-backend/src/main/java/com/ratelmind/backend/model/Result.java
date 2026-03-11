@@ -1,5 +1,6 @@
 package com.ratelmind.backend.model;
 
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,8 +12,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -32,11 +35,12 @@ public class Result {
     @Column(name = "total_score", nullable = false)
     private int totalScore;
 
-    @Column(nullable = false)
-    private String level;
+    @Column(name = "level", nullable = false)
+    private int level;
 
-    @Column(name = "answers_json", columnDefinition = "text")
-    private String answersJson;
+    @Type(JsonBinaryType.class)
+    @Column(name = "answers_json", columnDefinition = "jsonb")
+    private List<Integer> answersJson;
 
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp

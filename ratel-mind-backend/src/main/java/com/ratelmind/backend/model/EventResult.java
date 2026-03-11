@@ -1,5 +1,6 @@
 package com.ratelmind.backend.model;
 
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,8 +14,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @Getter
@@ -22,7 +25,7 @@ import java.util.Objects;
 @Entity
 @Table(
         name = "event_results",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"room_code", "nickname"})
+        uniqueConstraints = @UniqueConstraint(name = "room_nickname", columnNames = {"room_code", "nickname"})
 )
 @NoArgsConstructor
 @AllArgsConstructor
@@ -36,17 +39,18 @@ public class EventResult {
     @Column(name="room_code", nullable = false)
     private String roomCode;
 
-    @Column(nullable = false)
+    @Column(name = "nickname", nullable = false)
     private String nickname;
 
     @Column(name="total_score", nullable = false)
     private int totalScore;
 
-    @Column(nullable = false)
+    @Column(name = "level", nullable = false)
     private String level;
 
-    @Column(name="answers_json")
-    private String answersJson;
+    @Type(JsonBinaryType.class)
+    @Column(name = "answers_json", columnDefinition = "jsonb")
+    private List<Integer> answersJson;
 
     @Column(name="created_at", nullable = false)
     @CreationTimestamp

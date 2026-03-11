@@ -1,21 +1,50 @@
 package com.ratelmind.backend.service;
 
+import com.ratelmind.backend.dto.EventResultRequestDto;
 import com.ratelmind.backend.dto.RoomStatsDto;
 import com.ratelmind.backend.model.EventResult;
 import com.ratelmind.backend.repo.EventResultRepository;
 import com.ratelmind.backend.util.LevelConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class RoomStatsService {
 
     private final EventResultRepository eventResultRepository;
+
+    @Transactional
+    public RoomStatsDto saveEventResultAndGetRoomStats(EventResultRequestDto dto) {
+        String room = dto.roomCode().trim();
+        String nick = dto.nickname().trim();
+
+        // UPSERT: one nickname per room (update if exists)
+        EventResult eventResult = eventResultRepository
+                .findByRoomCodeAndNickname(room, nick)
+                .orElseGet(() -> EventResult.builder()
+                        .roomCode(room)
+                        .nickname(nick)
+                        .totalScore(0)
+                        .level("Level 1")
+                        .answersJson(null)
+                        .build()
+                );
+
+        eventResult.setTotalScore(dto.totalScore());
+        eventResult.setLevel(dto.level());
+        eventResult.setAnswersJson(Optional.of(dto.answers()).orElse(List.of()));
+
+        eventResultRepository.save(eventResult);
+
+        return this.buildRoomStats(room, nick);
+    }
 
     public RoomStatsDto buildRoomStats(String roomCode, String nickname) {
         List<EventResult> all = eventResultRepository.findByRoomCodeOrderByTotalScoreDesc(roomCode);

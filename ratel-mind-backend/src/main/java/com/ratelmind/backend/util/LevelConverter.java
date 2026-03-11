@@ -23,7 +23,7 @@ public final class LevelConverter {
         if (s.startsWith("Level IV")) return 4;
         if (s.startsWith("Level V")) return 5;
 
-        // "Level I" but NOT II/III/IV
+        // "Level I" but NOT II/III/IV%
         if (s.startsWith("Level I")) return 1;
 
         return 0;
