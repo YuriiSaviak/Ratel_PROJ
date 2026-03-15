@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState, useRef, RefObject} from "react";
+import superjson from "superjson";
 import {Location, useLocation} from "react-router-dom";
 import {
     QUESTIONS,
@@ -8,8 +9,8 @@ import {
     PILLAR_DETAILS,
 } from "../testData";
 import {FinalResult, GlobalStats, Pillar, RoomRankingEntry, RoomStats, Skill} from "../types/Types.ts";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import {api} from "../api/Api.ts";
+import {SavedProgress, SavedResult} from "../types/LocalStorageTypes.ts";
 
 const PILLAR_ORDER: Pillar[] = [Pillar.Cognitive, Pillar.Emotional, Pillar.Behavioral, Pillar.Social];
 
@@ -74,11 +75,13 @@ export default function TestPage() {
     useEffect(() => {
         try {
             const savedProgress = localStorage.getItem(PROGRESS_KEY);
+            console.log("Loaded progress from localStorage: ", savedProgress);
+
             if (savedProgress) {
-                const p = JSON.parse(savedProgress);
+                const p = superjson.parse<SavedProgress>(savedProgress);
                 setAnswers(p.answers || {});
                 setCurrentIndex(p.currentIndex || 0);
-                setCompleted(!!p.completed);
+                setCompleted(p.completed);
                 if (isEventMode && p.nickname) {
                     setNickname(p.nickname);
                     setNicknameLocked(true);
@@ -90,9 +93,11 @@ export default function TestPage() {
 
         try {
             const savedResult = localStorage.getItem(RESULT_KEY);
+            console.log("Loaded progress from localStorage: ", savedResult);
+
             if (savedResult) {
-                const r = JSON.parse(savedResult);
-                setResultMeta(r.meta || r.resultMeta || null);
+                const r = superjson.parse<SavedResult>(savedResult);
+                setResultMeta(r.meta);
                 setGlobalStats(r.globalStats || null);
                 setRoomStats(r.roomStats || null);
                 if (r.completed) setCompleted(true);
@@ -106,13 +111,14 @@ export default function TestPage() {
     // ---- save progress ----
     useEffect(() => {
         try {
-            const payload = {
-                answers,
+            const payload: SavedProgress = {
+                answers: answers,
                 currentIndex,
                 completed,
                 nickname: isEventMode ? nickname : null,
             };
-            localStorage.setItem(PROGRESS_KEY, JSON.stringify(payload));
+            console.log("Saving progress: ", payload);
+            localStorage.setItem(PROGRESS_KEY, superjson.stringify(payload));
         } catch (e) {
             console.error("Failed to save progress", e);
         }
@@ -138,6 +144,7 @@ export default function TestPage() {
             setRoomStats(null);
             setShowResult(false);
             try {
+                console.log("Clearing localStorage for fresh start");
                 localStorage.removeItem(RESULT_KEY);
             } catch (e) {
                 console.error(e);
@@ -209,55 +216,47 @@ export default function TestPage() {
             }
 
             if (isEventMode) {
-                const payload = {
-                    roomCode,
+                await api.eventResults.save({
+                    roomCode: roomCode,
                     nickname: (nickname || "anonymous").trim() || "anonymous",
                     totalScore: meta.totalScore,
                     level: meta.ratelLevel,
                     answers: orderedAnswers,
-                };
+                }).then((resp: { data: RoomStats | null }) => {
+                    setRoomStats(resp.data);
 
-                const resp = await fetch(`${API_BASE_URL}/api/event-results`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify(payload),
-                });
-
-                if (!resp.ok) {
-                    const txt = await resp.text().catch(() => "");
-                    console.error("Backend error (event-results):", resp.status, txt);
+                    const stored: SavedResult = {
+                        completed: true,
+                        meta: meta,
+                        roomStats: resp.data,
+                        globalStats: null
+                    };
+                    console.log("Saving event result to localStorage: ", stored);
+                    localStorage.setItem(RESULT_KEY, superjson.stringify(stored));
+                }).catch((err: Error) => {
+                    console.error(`Backend error (event-results): ${err}`);
                     throw new Error("Failed to save event result");
-                }
-
-                const data = await resp.json();
-                setRoomStats(data);
-
-                const stored = {completed: true, meta, roomStats: data, globalStats: null};
-                localStorage.setItem(RESULT_KEY, JSON.stringify(stored));
+                });
             } else {
-                const payload = {
+                await api.results.save({
                     totalScore: meta.totalScore,
                     level: meta.ratelLevel,
                     answers: orderedAnswers,
-                };
+                }).then((resp: { data: GlobalStats | null }) => {
+                    setGlobalStats(resp.data);
 
-                const resp = await fetch(`${API_BASE_URL}/api/results`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify(payload),
+                    const stored: SavedResult = {
+                        completed: true,
+                        meta: meta,
+                        globalStats: resp.data,
+                        roomStats: null
+                    };
+                    console.log("Saving result to localStorage: ", stored);
+                    localStorage.setItem(RESULT_KEY, superjson.stringify(stored));
+                }).catch((err: Error) => {
+                    console.error(`Backend error (event-results): ${err}`);
+                    throw new Error("Failed to save event result");
                 });
-
-                if (!resp.ok) {
-                    const txt = await resp.text().catch(() => "");
-                    console.error("Backend error (results):", resp.status, txt);
-                    throw new Error("Failed to save result");
-                }
-
-                const data = await resp.json();
-                setGlobalStats(data);
-
-                const stored = {completed: true, meta, globalStats: data, roomStats: null};
-                localStorage.setItem(RESULT_KEY, JSON.stringify(stored));
             }
 
             setIsOverlayOpen(false);
@@ -295,6 +294,7 @@ export default function TestPage() {
     };
 
     const meta = resultMeta;
+    console.log(meta)
 
     // --- narrative по уровню ---
     const levelInfo = meta ? LEVEL_DETAILS.get(meta.ratelLevel) ?? null : null;
@@ -322,7 +322,11 @@ export default function TestPage() {
     // --- ТОП-3 СKIЛЛОВ ПО ВСЕМ ПИЛЛАРАМ ---
     const topSkillsInfo = useMemo(() => {
         if (!meta || !meta.skillResults) {
-            return {skills: [] as { pillarName: Pillar; skillName: Skill; sum: number; level: string }[], isBalanced: false, hasTies: false};
+            return {
+                skills: [] as { pillarName: Pillar; skillName: Skill; sum: number; level: string }[],
+                isBalanced: false,
+                hasTies: false
+            };
         }
 
         const flat: { pillarName: Pillar; skillName: Skill; sum: number; level: string }[] = [];
