@@ -5,13 +5,12 @@ import com.ratelmind.backend.dto.ResultRequestDto;
 import com.ratelmind.backend.model.Result;
 import com.ratelmind.backend.repo.ResultRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class GlobalStatsService {
 
@@ -22,14 +21,16 @@ public class GlobalStatsService {
         Result result = Result.builder()
                 .totalScore(dto.totalScore())
                 .level(dto.level())
-                .answersJson(Optional.of(dto.answers()).orElse(List.of()))
+                .answersJson(dto.answers())
                 .build();
+        log.info("Saving result with total score {} and level {}", dto.totalScore(), dto.level());
 
         resultRepository.save(result);
         return this.buildGlobalStats(result.getTotalScore());
     }
 
     public GlobalStatsDto buildGlobalStats(int userScore) {
+        log.info("Building global stats for score {}", userScore);
         return resultRepository.buildGlobalStats(userScore);
     }
 }
