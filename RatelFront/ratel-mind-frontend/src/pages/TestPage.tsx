@@ -9,7 +9,7 @@ import {
     PILLAR_DETAILS,
 } from "../testData";
 import {FinalResult, GlobalStats, Pillar, RoomRankingEntry, RoomStats, Skill} from "../types/Types.ts";
-import {api} from "../api/Api.ts";
+import {api} from "../app/Api.ts";
 import {SavedProgress, SavedResult} from "../types/LocalStorageTypes.ts";
 
 const PILLAR_ORDER: Pillar[] = [Pillar.Cognitive, Pillar.Emotional, Pillar.Behavioral, Pillar.Social];
