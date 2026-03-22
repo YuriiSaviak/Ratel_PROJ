@@ -1367,6 +1367,7 @@ transform: scale(1.02);
     font-size: 14px;
   }
 }
+
 @keyframes heroFadeUp {
   from {
     opacity: 0;

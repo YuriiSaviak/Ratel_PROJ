@@ -1,7 +1,7 @@
 import {FinalResult, GlobalStats, RoomStats} from "./Types.ts";
 
 export interface SavedProgress {
-    answers: Record<number, number>;
+    answers: Map<number, number>;
     currentIndex: number;
     completed: boolean;
     nickname: string | null;

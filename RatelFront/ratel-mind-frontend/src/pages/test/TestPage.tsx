@@ -1,5 +1,4 @@
 import {useEffect, useMemo, useState, useRef, RefObject} from "react";
-import superjson from "superjson";
 import {Location, useLocation} from "react-router-dom";
 import {
     QUESTIONS,
@@ -7,10 +6,12 @@ import {
     computeScores,
     LEVEL_DETAILS,
     PILLAR_DETAILS,
-} from "../testData";
-import {FinalResult, GlobalStats, Pillar, RoomRankingEntry, RoomStats, Skill} from "../types/Types.ts";
-import {api} from "../app/Api.ts";
-import {SavedProgress, SavedResult} from "../types/LocalStorageTypes.ts";
+} from "../../testData";
+import {FinalResult, GlobalStats, LevelDetail, Pillar, RoomRankingEntry, RoomStats, Skill} from "../../types/Types.ts";
+import {useProgressStatus} from "./hooks/useProgressStatus.ts";
+import {useResultStatus} from "./hooks/useResultStatus.ts";
+import {getLevelBadgeClass} from "./utils/util.ts";
+import {saveEventResult, saveResult} from "./utils/apiCalls.ts";
 
 const PILLAR_ORDER: Pillar[] = [Pillar.Cognitive, Pillar.Emotional, Pillar.Behavioral, Pillar.Social];
 
@@ -21,19 +22,26 @@ const PILLAR_SKILLS_ORDER: Record<Pillar, Skill[]> = {
     [Pillar.Social]: [Skill.SupportNetwork, Skill.Assertiveness, Skill.ResilienceInRelationships],
 };
 
-function getLevelBadgeClass(level: string | null) {
-    if (!level) return "levelBadge levelBadge--medium";
-    const l = level.toLowerCase();
-    if (l.startsWith("high")) return "levelBadge levelBadge--high";
-    if (l.startsWith("low")) return "levelBadge levelBadge--low";
-    return "levelBadge levelBadge--medium";
-}
-
 export default function TestPage() {
     const location: Location = useLocation();
     const search: URLSearchParams = new URLSearchParams(location.search);
     const roomCode: string | null = (search.get("room") || "").trim() || null;
     const isEventMode: boolean = !!roomCode;
+
+    const [completed, setCompleted] = useState(false);
+    const {
+        currentIndex,
+        answers,
+        nickname,
+        nicknameLocked,
+        loadProgress,
+        saveProgress,
+        initProgressStatus,
+        updateNickname,
+        nextQuestion,
+        previousQuestion
+    } = useProgressStatus(setCompleted);
+    const {globalStats, roomStats, resultMeta, loadResult, initResultStatus, setRoomStats, setGlobalStats, setResultMeta} = useResultStatus(setCompleted);
 
     const STORAGE_PREFIX = isEventMode
         ? `ratel_test_v2_room_${roomCode}`
@@ -42,16 +50,6 @@ export default function TestPage() {
     const RESULT_KEY = `${STORAGE_PREFIX}_result`;
 
     const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [answers, setAnswers] = useState<Record<number, number>>({});
-    const [completed, setCompleted] = useState(false);
-
-    const [nickname, setNickname] = useState("");
-    const [nicknameLocked, setNicknameLocked] = useState(false);
-
-    const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
-    const [roomStats, setRoomStats] = useState<RoomStats | null>(null);
-    const [resultMeta, setResultMeta] = useState<FinalResult | null>(null);
 
     const [showResult, setShowResult] = useState(false);
 
@@ -71,57 +69,19 @@ export default function TestPage() {
 
     const progressPct = ((currentIndex + 1) / QUESTIONS.length) * 100;
 
-    // ---- load from localStorage ----
+    /**
+     * Loads progress and results from localstorage.
+     */
     useEffect(() => {
-        try {
-            const savedProgress = localStorage.getItem(PROGRESS_KEY);
-            console.log("Loaded progress from localStorage: ", savedProgress);
-
-            if (savedProgress) {
-                const p = superjson.parse<SavedProgress>(savedProgress);
-                setAnswers(p.answers || {});
-                setCurrentIndex(p.currentIndex || 0);
-                setCompleted(p.completed);
-                if (isEventMode && p.nickname) {
-                    setNickname(p.nickname);
-                    setNicknameLocked(true);
-                }
-            }
-        } catch (e) {
-            console.error("Failed to read progress", e);
-        }
-
-        try {
-            const savedResult = localStorage.getItem(RESULT_KEY);
-            console.log("Loaded progress from localStorage: ", savedResult);
-
-            if (savedResult) {
-                const r = superjson.parse<SavedResult>(savedResult);
-                setResultMeta(r.meta);
-                setGlobalStats(r.globalStats || null);
-                setRoomStats(r.roomStats || null);
-                if (r.completed) setCompleted(true);
-                // showResult оставляем false – юзер сам жмёт "View your result"
-            }
-        } catch (e) {
-            console.error("Failed to read result", e);
-        }
+        loadProgress(PROGRESS_KEY, isEventMode);
+        loadResult(RESULT_KEY);
     }, [PROGRESS_KEY, RESULT_KEY, isEventMode]);
 
-    // ---- save progress ----
+    /**
+     * Saves progress to localstorage on every change (answers, current question, completion, nickname).
+     */
     useEffect(() => {
-        try {
-            const payload: SavedProgress = {
-                answers: answers,
-                currentIndex,
-                completed,
-                nickname: isEventMode ? nickname : null,
-            };
-            console.log("Saving progress: ", payload);
-            localStorage.setItem(PROGRESS_KEY, superjson.stringify(payload));
-        } catch (e) {
-            console.error("Failed to save progress", e);
-        }
+        saveProgress(PROGRESS_KEY, isEventMode, completed);
     }, [answers, currentIndex, completed, nickname, PROGRESS_KEY, isEventMode]);
 
     const scrollToResult = () => {
@@ -136,22 +96,15 @@ export default function TestPage() {
         setSubmitError("");
 
         if (mode === "fresh") {
-            setAnswers({});
-            setCurrentIndex(0);
+            initResultStatus();
             setCompleted(false);
-            setResultMeta(null);
-            setGlobalStats(null);
-            setRoomStats(null);
             setShowResult(false);
+            initProgressStatus(nickname, isEventMode); // TODO pass nickname var
             try {
                 console.log("Clearing localStorage for fresh start");
                 localStorage.removeItem(RESULT_KEY);
             } catch (e) {
                 console.error(e);
-            }
-            if (isEventMode && nickname) {
-                setNickname(nickname.trim());
-                setNicknameLocked(true);
             }
         }
 
@@ -166,21 +119,23 @@ export default function TestPage() {
         setIsOverlayOpen(false);
     };
 
-    const handleConfirmNickname = () => {
-        if (!nickname.trim()) return;
-        setNickname(nickname.trim());
-        setNicknameLocked(true);
+    const handleConfirmNickname = (newNickname: string) => {
+        if (!newNickname.trim()) {
+            return;
+        }
+        updateNickname(newNickname) // TODO pass nickname var
     };
 
     const handleAnswerClick = (value: number) => {
-        if (!currentQuestion || isSubmitting) return;
+        if (!currentQuestion || isSubmitting) {
+            return;
+        }
 
-        // делаем снапшот сразу (setState async)
-        const nextAnswers = {...answers, [currentQuestion.id]: value};
-        setAnswers(nextAnswers);
+        const nextAnswers: Map<number, number> = new Map(answers);
+        nextAnswers.set(currentQuestion.id, value);
 
         if (currentIndex < QUESTIONS.length - 1) {
-            setCurrentIndex((idx) => idx + 1);
+            nextQuestion(nextAnswers);
         } else {
             handleFinishTest(nextAnswers);
         }
@@ -189,21 +144,21 @@ export default function TestPage() {
     const handleBack = () => {
         setSubmitError("");
         if (currentIndex > 0) {
-            setCurrentIndex((idx) => idx - 1);
+            previousQuestion();
         }
     };
 
-    const handleFinishTest = async (answersSnapshot: Record<number, number> = answers) => {
+    const handleFinishTest = async (answersSnapshot: Map<number, number>) => {
         setSubmitError("");
         setIsSubmitting(true);
 
         try {
-            const meta = computeScores(answersSnapshot);
+            const meta: FinalResult = computeScores(answersSnapshot);
             setResultMeta(meta);
             setCompleted(true);
 
-            // ВАЖНО: отправляем строго числа 1..5 (без 0)
-            const orderedAnswers = QUESTIONS.map((q) => Number(answersSnapshot[q.id]));
+            // Checks validity of answers
+            const orderedAnswers = QUESTIONS.map((q) => Number(answersSnapshot.get(q.id)));
 
             const invalid =
                 orderedAnswers.length !== QUESTIONS.length ||
@@ -216,47 +171,17 @@ export default function TestPage() {
             }
 
             if (isEventMode) {
-                await api.eventResults.save({
-                    roomCode: roomCode,
+                const roomStats: RoomStats | null = await saveEventResult(RESULT_KEY, {
+                    roomCode,
                     nickname: (nickname || "anonymous").trim() || "anonymous",
                     totalScore: meta.totalScore,
                     level: meta.ratelLevel,
                     answers: orderedAnswers,
-                }).then((resp: { data: RoomStats | null }) => {
-                    setRoomStats(resp.data);
-
-                    const stored: SavedResult = {
-                        completed: true,
-                        meta: meta,
-                        roomStats: resp.data,
-                        globalStats: null
-                    };
-                    console.log("Saving event result to localStorage: ", stored);
-                    localStorage.setItem(RESULT_KEY, superjson.stringify(stored));
-                }).catch((err: Error) => {
-                    console.error(`Backend error (event-results): ${err}`);
-                    throw new Error("Failed to save event result");
-                });
+                }, meta)
+                setRoomStats(roomStats);
             } else {
-                await api.results.save({
-                    totalScore: meta.totalScore,
-                    level: meta.ratelLevel,
-                    answers: orderedAnswers,
-                }).then((resp: { data: GlobalStats | null }) => {
-                    setGlobalStats(resp.data);
-
-                    const stored: SavedResult = {
-                        completed: true,
-                        meta: meta,
-                        globalStats: resp.data,
-                        roomStats: null
-                    };
-                    console.log("Saving result to localStorage: ", stored);
-                    localStorage.setItem(RESULT_KEY, superjson.stringify(stored));
-                }).catch((err: Error) => {
-                    console.error(`Backend error (event-results): ${err}`);
-                    throw new Error("Failed to save event result");
-                });
+                const globalStats: GlobalStats | null = await saveResult(RESULT_KEY, orderedAnswers, meta);
+                setGlobalStats(globalStats);
             }
 
             setIsOverlayOpen(false);
@@ -273,13 +198,14 @@ export default function TestPage() {
         }
     };
 
-
     const handleDownloadPdf = () => {
         window.print();
     };
 
     const handleViewResultClick = () => {
-        if (!hasResult) return;
+        if (!hasResult) {
+            return;
+        }
         setShowResult(true);
         setTimeout(scrollToResult, 80);
     };
@@ -293,11 +219,11 @@ export default function TestPage() {
         );
     };
 
-    const meta = resultMeta;
+    const meta: FinalResult | null = resultMeta;
     console.log(meta)
 
     // --- narrative по уровню ---
-    const levelInfo = meta ? LEVEL_DETAILS.get(meta.ratelLevel) ?? null : null;
+    const levelInfo: LevelDetail | null = meta ? LEVEL_DETAILS.get(meta.ratelLevel) ?? null : null;
 
     // --- самый сильный PILLAR (по сумме) ---
     const topPillarName = useMemo(() => {
@@ -372,7 +298,7 @@ export default function TestPage() {
     const {skills: topSkills, isBalanced, hasTies} = topSkillsInfo;
 
     return (
-        <main className="main">
+        <>
             <div className="container">
                 {/* ---------- INTRO ---------- */}
                 <section className="testIntro">
@@ -897,7 +823,7 @@ export default function TestPage() {
                                 <input
                                     className="nicknameInput"
                                     value={nickname}
-                                    onChange={(e) => setNickname(e.target.value)}
+                                    onChange={(e) => handleConfirmNickname(e.target.value)}
                                     placeholder="e.g. SkyWalker"
                                 />
                                 <div className="nicknameHint">
@@ -909,7 +835,7 @@ export default function TestPage() {
                                     <button
                                         type="button"
                                         className="btn btn--primary btn--small"
-                                        onClick={handleConfirmNickname}
+                                        onClick={() => handleConfirmNickname(nickname)}
                                         disabled={!nickname.trim()}
                                     >
                                         Zatwierdź i rozpocznij
@@ -941,7 +867,7 @@ export default function TestPage() {
                                             key={v}
                                             type="button"
                                             className={
-                                                answers[currentQuestion.id] === v
+                                                answers.get(currentQuestion.id) === v
                                                     ? "scaleBtn scaleBtn--active"
                                                     : "scaleBtn"
                                             }
@@ -977,6 +903,6 @@ export default function TestPage() {
                     </div>
                 </div>
             )}
-        </main>
+        </>
     );
 }

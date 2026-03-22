@@ -449,12 +449,12 @@ export function getSkillLevel(score: number): LabelType {
 }
 
 // ===== OBLICZANIE WYNIKÓW =====
-export function computeScores(answers: Record<number, number>): FinalResult {
+export function computeScores(answers: Map<number, number>): FinalResult {
     const scored = new Map<number, number>();
     let total = 0;
 
     for (const q of QUESTIONS) {
-        const raw = answers?.[q.id] ?? 0;
+        const raw = answers?.get(q.id) ?? 0;
         const s = scoreAnswer(q.id, raw);
         scored.set(q.id, s);
         total += s;
@@ -464,6 +464,7 @@ export function computeScores(answers: Record<number, number>): FinalResult {
     for (const pillar of Object.values(Pillar)) {
         const ids = QUESTIONS.filter((q) => q.pillar === pillar).map((q) => q.id);
         const sum = ids.reduce((a: number, id: number) => a + (scored.get(id) || 0), 0);
+
         pillars.set(pillar, {
             sum,
             level: getPillarLevel(sum),
@@ -476,6 +477,7 @@ export function computeScores(answers: Record<number, number>): FinalResult {
     for (const [p, sk] of ANSWER_KEY.entries()) {
         const pillarMap = new Map<Skill, ResultEntry>();
         skills.set(p, pillarMap);
+
         for (const [s, ids] of sk.entries()) {
             const sum = ids.reduce((a: number, id: number) => a + (scored.get(id) || 0), 0);
             pillarMap.set(s, {
