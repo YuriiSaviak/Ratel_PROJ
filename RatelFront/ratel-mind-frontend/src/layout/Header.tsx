@@ -1,6 +1,10 @@
-import {Link, useLocation} from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Logo from "../assets/SVG_ratel_mind_logo.svg";
-import {useMemo, useState} from "react";
+import { useMemo, useState } from "react";
+import { Layout, Menu, Button, Drawer } from "antd";
+import { MenuOutlined } from "@ant-design/icons";
+
+const { Header: AntHeader } = Layout;
 
 export default function Header() {
     const location = useLocation();
@@ -8,64 +12,63 @@ export default function Header() {
 
     const navItems = useMemo(
         () => [
-            {to: "/", label: "Home"},
-            {to: "/about", label: "About Us"},
-            {to: "/workshops", label: "Workshops"},
-            {to: "/contact", label: "Contact"},
+            { key: "/", label: "Home" },
+            { key: "/about", label: "About Us" },
+            { key: "/workshops", label: "Workshops" },
+            { key: "/contact", label: "Contact" },
         ],
         []
     );
 
-    const isActive = (path: string) => (location.pathname === path ? "active" : "");
+    const menuItems = navItems.map(item => ({
+        key: item.key,
+        label: <Link to={item.key} onClick={() => setMobileOpen(false)}>{item.label}</Link>,
+    }));
 
     return (
-        <header className="header">
+        <AntHeader className="header">
             <div className="container header__inner">
                 <Link to="/" className="brand" onClick={() => setMobileOpen(false)}>
-                    <img className="brand__logo" src={Logo} alt="Ratel Mind"/>
+                    <img className="brand__logo" src={Logo} alt="Ratel Mind" />
                 </Link>
 
-                <nav className="nav nav--desktop">
-                    {navItems.map((x) => (
-                        <Link key={x.to} to={x.to} className={`nav__link ${isActive(x.to)}`}>
-                            {x.label}
-                        </Link>
-                    ))}
-                </nav>
+                <Menu
+                    mode="horizontal"
+                    selectedKeys={[location.pathname]}
+                    items={menuItems}
+                    className="nav--desktop"
+                    disabledOverflow
+                />
 
                 <div className="header__actions">
-                    <Link to="/test" className="btn btn--outline" onClick={() => setMobileOpen(false)}>
-                        Take a Test
+                    <Link to="/test" onClick={() => setMobileOpen(false)}>
+                        <Button shape="round" className="btn--header-action">
+                            Take a Test
+                        </Button>
                     </Link>
 
-                    <button
+                    <Button
                         className="burger"
-                        aria-label="Open menu"
+                        icon={<MenuOutlined />}
                         onClick={() => setMobileOpen((v) => !v)}
-                    >
-                        <span/>
-                        <span/>
-                        <span/>
-                    </button>
+                        type="text"
+                    />
                 </div>
             </div>
 
-            {mobileOpen && (
-                <div className="mobileNav">
-                    <div className="container mobileNav__inner">
-                        {navItems.map((x) => (
-                            <Link
-                                key={x.to}
-                                to={x.to}
-                                className={`mobileNav__link ${isActive(x.to)}`}
-                                onClick={() => setMobileOpen(false)}
-                            >
-                                {x.label}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </header>
-    )
+            <Drawer
+                title="Menu"
+                placement="right"
+                onClose={() => setMobileOpen(false)}
+                open={mobileOpen}
+                styles={{ body: { padding: 0 } }}
+            >
+                <Menu
+                    mode="vertical"
+                    selectedKeys={[location.pathname]}
+                    items={menuItems}
+                />
+            </Drawer>
+        </AntHeader>
+    );
 }
