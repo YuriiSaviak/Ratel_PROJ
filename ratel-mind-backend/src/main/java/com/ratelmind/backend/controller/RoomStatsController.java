@@ -1,6 +1,5 @@
 package com.ratelmind.backend.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ratelmind.backend.dto.EventResultRequestDto;
 import com.ratelmind.backend.dto.RoomStatsDto;
 import com.ratelmind.backend.service.RoomStatsService;
@@ -23,7 +22,7 @@ public class RoomStatsController {
     private final RoomStatsService roomStatsService;
 
     @PostMapping("/event-results")
-    public ResponseEntity<RoomStatsDto> saveEventResultAndGetRoomStats(@RequestBody @Valid EventResultRequestDto dto) throws JsonProcessingException {
+    public ResponseEntity<RoomStatsDto> saveEventResultAndGetRoomStats(@RequestBody @Valid EventResultRequestDto dto) {
         return ResponseEntity.ok(roomStatsService.saveEventResultAndGetRoomStats(dto));
     }
 
