@@ -30,7 +30,10 @@ public class EmailFormsService {
     public void sendForm(EmailFormDto emailFormDto) {
         var context = new Context();
         context.setVariables(Map.of(
+                "name", emailFormDto.name(),
+                "surname", emailFormDto.surname(),
                 "email", emailFormDto.email(),
+                "phoneNumber", emailFormDto.phoneNumber(),
                 "message", emailFormDto.message()
         ));
         var body = springTemplateEngine.process("email-form", context);
@@ -40,7 +43,7 @@ public class EmailFormsService {
             var helper = new MimeMessageHelper(message, true);
             helper.setFrom(fromAddress);
             helper.setTo(toAddress);
-            helper.setSubject("Request");
+            helper.setSubject("Request from a client");
             helper.setText(body, true);
             mailSender.send(message);
         } catch (Exception _) {
