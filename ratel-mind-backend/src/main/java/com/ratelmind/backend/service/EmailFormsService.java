@@ -25,7 +25,8 @@ public class EmailFormsService {
     @Value("${spring.mail.username}")
     private String fromAddress;
 
-    private static final String toAddress = "";
+    @Value("${app.email-receiver}")
+    private String toAddress;
 
     public void sendForm(EmailFormDto emailFormDto) {
         var context = new Context();
