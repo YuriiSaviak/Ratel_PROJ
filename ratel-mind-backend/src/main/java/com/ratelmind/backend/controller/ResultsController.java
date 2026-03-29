@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-public class ResultController {
+public class ResultsController {
 
     private final GlobalStatsService globalStatsService;
 

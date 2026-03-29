@@ -1,4 +1,3 @@
-# Database (use ENV in production)
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/ratel_mind}
@@ -11,11 +10,21 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:}
+    password: ${EMAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: ${PORT:8080}
 
-# CORS (comma-separated list). Example:
 # APP_CORS_ALLOWED_ORIGINS=http://localhost:5173,https://ratelmind.com
 app:
   cors:
