@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.ratelmind</groupId>
-    <artifactId>ratel-mind-backend</artifactId>
+    <artifactId>ratel-mind</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>ratel-mind-backend</name>
     <description>Ratel Mind resilience test backend</description>
