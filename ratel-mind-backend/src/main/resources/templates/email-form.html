@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Template</title>
+</head>
+<body>
+<h1 th:text="|Message from ${name}${surname != null ? ' ' + surname : ''}|"/>
+<p th:text="|Email: ${email}|"/>
+<p th:if="${phoneNumber != null}">
+    Phone: <span th:text="${phoneNumber}"/>
+</p>
+<p th:text="|Text from the request: ${message}|"/>
+</body>
+</html>
